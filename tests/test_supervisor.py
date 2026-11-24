@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from langchain_core.runnables import RunnableLambda
 
-from app.supervisor import NvidiaSupervisor, OpenAISupervisor, RouteDecision
+from app.supervisor import NvidiaSupervisor, OpenAISupervisor, OllamaSupervisor, RouteDecision
 
 
 class SupervisorProviderTests(unittest.TestCase):
@@ -33,3 +33,12 @@ class SupervisorProviderTests(unittest.TestCase):
 
         model_class.assert_called_once_with(model="gpt-4o-mini", temperature=0)
         model_class.return_value.with_structured_output.assert_called_once_with(RouteDecision)
+
+    def test_ollama_uses_local_structured_output(self) -> None:
+        with patch("app.supervisor.ChatOllama") as model_class:
+            model_class.return_value.with_structured_output.return_value = RunnableLambda(
+                lambda _: RouteDecision(next_agent="research", reason="need sources")
+            )
+            OllamaSupervisor("gemma3:1b", base_url="http://ollama:11434")
+        model_class.assert_called_once_with(model="gemma3:1b", base_url="http://ollama:11434", temperature=0)
+        model_class.return_value.with_structured_output.assert_called_once_with(RouteDecision, method="json_schema")

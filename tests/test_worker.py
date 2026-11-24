@@ -65,6 +65,10 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
 
 
 class WorkerProviderTests(unittest.TestCase):
+    def test_ollama_mode_selects_local_supervisor(self) -> None:
+        with patch("app.worker.OllamaSupervisor") as supervisor, patch.dict("os.environ", {"OLLAMA_CHAT_MODEL": "gemma3:1b", "OLLAMA_BASE_URL": "http://ollama:11434"}):
+            self.assertIs(create_router("ollama"), supervisor.return_value)
+        supervisor.assert_called_once_with("gemma3:1b", base_url="http://ollama:11434")
     def test_nvidia_mode_selects_nvidia_supervisor(self) -> None:
         with patch("app.worker.NvidiaSupervisor") as supervisor:
             self.assertIs(create_router("nvidia"), supervisor.return_value)

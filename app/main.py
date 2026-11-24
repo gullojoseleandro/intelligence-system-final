@@ -2,10 +2,11 @@ import hmac
 import json
 import os
 from contextlib import asynccontextmanager
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from redis.asyncio import Redis
 
 from app.jobs import JobStore
@@ -14,22 +15,41 @@ from app.jobs import JobStore
 class TaskRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
 
+    @field_validator("query")
+    @classmethod
+    def reject_blank_query(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("query must contain non-whitespace text")
+        return value
+
 
 class ApprovalRequest(BaseModel):
     approved: bool
 
 
+JobStatus = Literal["PENDING", "RUNNING", "WAITING_APPROVAL", "DONE", "FAILED"]
+
+
+class ApprovalDetails(BaseModel):
+    query: str
+    reason: str
+
+
+class HealthView(BaseModel):
+    status: Literal["ok"]
+
+
 class TaskAccepted(BaseModel):
     job_id: str
-    status: str
+    status: JobStatus
 
 
 class TaskView(BaseModel):
     job_id: str
-    status: str
+    status: JobStatus
     answer: str | None = None
     error: str | None = None
-    approval: dict | None = None
+    approval: ApprovalDetails | None = None
 
 
 def create_app(redis_client: Redis | None = None, admin_token: str | None = None) -> FastAPI:
@@ -79,10 +99,10 @@ def create_app(redis_client: Redis | None = None, admin_token: str | None = None
             raise HTTPException(status_code=409, detail="Task is not waiting for approval")
         return TaskAccepted(job_id=job_id, status="PENDING")
 
-    @app.get("/health")
-    async def health() -> dict[str, str]:
+    @app.get("/health", response_model=HealthView)
+    async def health() -> HealthView:
         await app.state.store.redis.ping()
-        return {"status": "ok"}
+        return HealthView(status="ok")
 
     return app
 

@@ -15,9 +15,9 @@ async def run(base_url: str, timeout: float) -> dict:
     queries = [
         "Investigate INC-104 and calculate the p95 latency increase",
         "Investigate INC-207 and calculate the p95 latency increase",
-        "Investigate INC-104 and calculate the p95 latency increase",
-        "Investigate INC-207 and calculate the p95 latency increase",
-        "Investigate INC-104 and calculate the p95 latency increase",
+        "Investigate INC-315 and calculate the p95 latency increase",
+        "Investigate INC-421 and calculate the p95 latency increase",
+        "Investigate INC-999 and calculate the p95 latency increase",
     ]
     async with httpx.AsyncClient(base_url=base_url, timeout=10) as client:
         async def submit_and_poll(query: str) -> dict:
@@ -31,7 +31,7 @@ async def run(base_url: str, timeout: float) -> dict:
                 current.raise_for_status()
                 job = current.json()
                 if job["status"] in {"DONE", "FAILED", "WAITING_APPROVAL"}:
-                    return {"job_id": job_id, "status": job["status"], "seconds": round(time.perf_counter() - start, 3)}
+                    return {"job_id": job_id, "query": query, "status": job["status"], "answer": job.get("answer"), "seconds": round(time.perf_counter() - start, 3)}
                 await asyncio.sleep(0.1)
             return {"job_id": job_id, "status": "TIMEOUT", "seconds": round(time.perf_counter() - start, 3)}
 
@@ -42,7 +42,7 @@ async def run(base_url: str, timeout: float) -> dict:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "jobs": jobs,
         "p95_seconds_nearest_rank": p95,
-        "note": "Client-observed p95 is not a LangSmith dashboard metric; use dashboard screenshots for cost and trace evidence.",
+        "note": "Client-observed p95 is not a Phoenix trace metric. Verify all five job IDs in Phoenix before claiming trace evidence.",
     }
 
 

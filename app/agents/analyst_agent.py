@@ -2,16 +2,24 @@ import asyncio
 import re
 
 from langchain_core.tools import tool
+from pydantic import BaseModel, Field
 
 from app.state import OrchestratorState
 
 
-@tool
+class PercentChangeInput(BaseModel):
+    baseline: float = Field(gt=0)
+    current: float = Field(ge=0)
+
+
+class PercentChangeOutput(BaseModel):
+    percent_change: float
+
+
+@tool(args_schema=PercentChangeInput)
 def calculate_percent_change(baseline: float, current: float) -> float:
     """Calculate the percentage change from a nonzero baseline to a current measurement."""
-    if baseline <= 0:
-        raise ValueError("Baseline must be greater than zero")
-    return round((current - baseline) / baseline * 100, 1)
+    return PercentChangeOutput(percent_change=round((current - baseline) / baseline * 100, 1)).percent_change
 
 
 def _metric(text: str, name: str) -> float | None:

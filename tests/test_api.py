@@ -7,9 +7,21 @@ from asgi_lifespan import LifespanManager
 from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app
+from app.main import TaskAccepted, TaskView
+from pydantic import ValidationError
 
 
 class ApiTests(unittest.IsolatedAsyncioTestCase):
+    def test_response_models_reject_invalid_status_and_approval(self) -> None:
+        with self.assertRaises(ValidationError):
+            TaskAccepted(job_id="abc", status="BROKEN")
+        with self.assertRaises(ValidationError):
+            TaskView(job_id="abc", status="WAITING_APPROVAL", approval={"unexpected": "value"})
+
+    async def test_request_rejects_blank_query(self) -> None:
+        response = await self.client.post("/tasks", json={"query": "   "})
+        self.assertEqual(response.status_code, 422)
+
     async def asyncSetUp(self) -> None:
         self.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
         self.app = create_app(redis_client=self.redis, admin_token="test-admin-token")

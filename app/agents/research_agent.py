@@ -4,14 +4,21 @@ import sqlite3
 from pathlib import Path
 
 from langchain_core.tools import tool
+from pydantic import BaseModel, Field
 
 from app.state import OrchestratorState, ResearchReport
+from app.rag.retrieval import retrieve_reports
+from app.rag.store import ReportRecord
 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
 
-@tool
+class SearchReportsInput(BaseModel):
+    query: str = Field(min_length=1)
+
+
+@tool(args_schema=SearchReportsInput)
 def search_reports(query: str) -> list[ResearchReport]:
     """Query a local SQLite FTS5 incident index for citable technical reports.
 
@@ -41,12 +48,22 @@ def search_reports(query: str) -> list[ResearchReport]:
             ).fetchall()
         else:
             rows = []
-    return [{"source_id": source_id, "path": path, "text": text} for source_id, path, text in rows]
+    return [ReportRecord(source_id=source_id, path=path, text=text).model_dump() for source_id, path, text in rows]
 
 
 async def research_node(state: OrchestratorState) -> dict:
-    """Use only the search tool and return citable source material."""
-    reports = await asyncio.to_thread(search_reports.invoke, {"query": state["query"]})
+    """Combine exact incident lookup with semantic retrieval for citable reports."""
+    exact = await asyncio.to_thread(search_reports.invoke, {"query": state["query"]})
+    dense = await retrieve_reports(state["query"])
+    incident_ids = set(re.findall(r"INC-\d+", state["query"].upper()))
+    if incident_ids:
+        dense = [report for report in dense if report["source_id"] in incident_ids]
+    reports: list[ResearchReport] = []
+    seen: set[str] = set()
+    for report in [*exact, *dense]:
+        if report["source_id"] not in seen:
+            reports.append(report)
+            seen.add(report["source_id"])
     source_ids = [report["source_id"] for report in reports]
     summary = f"Found {len(reports)} matching report(s): {', '.join(source_ids) or 'none'}"
     return {

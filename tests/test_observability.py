@@ -25,3 +25,8 @@ class ObservabilitySettingsTests(unittest.TestCase):
         with patch.dict(os.environ, {"MODEL_MODE": "nvidia", "NVIDIA_API_KEY": "nvapi-test", "LANGSMITH_TRACING": "false"}):
             mode, _ = load_settings()
         self.assertEqual(mode, "nvidia")
+
+    def test_ollama_and_phoenix_need_no_cloud_keys(self) -> None:
+        with patch.dict(os.environ, {"MODEL_MODE": "ollama", "OPENAI_API_KEY": "", "NVIDIA_API_KEY": "", "LANGSMITH_TRACING": "false", "PHOENIX_TRACING": "true", "LANGSMITH_API_KEY": ""}):
+            mode, _ = load_settings()
+        self.assertEqual(mode, "ollama")

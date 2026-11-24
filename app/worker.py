@@ -10,8 +10,8 @@ from redis.asyncio import Redis
 from app.demo import OfflineDemoRouter
 from app.graph import build_graph, initial_state
 from app.jobs import JobStore
-from app.observability import load_settings
-from app.supervisor import NvidiaSupervisor, OpenAISupervisor, Router
+from app.observability import configure_phoenix_tracing, load_settings
+from app.supervisor import NvidiaSupervisor, OllamaSupervisor, OpenAISupervisor, Router
 
 
 logger = logging.getLogger(__name__)
@@ -22,13 +22,16 @@ def create_router(mode: str) -> Router:
         return OfflineDemoRouter()
     if mode == "nvidia":
         return NvidiaSupervisor(os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct"))
+    if mode == "ollama":
+        return OllamaSupervisor(os.getenv("OLLAMA_CHAT_MODEL", "gemma3:1b"), base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"))
     return OpenAISupervisor(os.getenv("MODEL_NAME", "gpt-4o-mini"))
 
 
 class Worker:
-    def __init__(self, store: JobStore, graph) -> None:
+    def __init__(self, store: JobStore, graph, tracer=None) -> None:
         self.store = store
         self.graph = graph
+        self.tracer = tracer
 
     async def process_once(self, timeout: int = 1) -> bool:
         job_id = await self.store.claim(timeout=timeout)
@@ -47,7 +50,12 @@ class Worker:
                 value = None if snapshot.values else initial_state(job["query"])
             else:
                 value = initial_state(job["query"])
-            result = await self.graph.ainvoke(value, config)
+            if self.tracer is None:
+                result = await self.graph.ainvoke(value, config)
+            else:
+                with self.tracer.start_as_current_span("worker.graph") as span:
+                    span.set_attribute("job.id", job_id)
+                    result = await self.graph.ainvoke(value, config)
             interruptions = result.get("__interrupt__", [])
             if interruptions:
                 item = interruptions[0]
@@ -75,6 +83,7 @@ class Worker:
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     mode, redis_url = load_settings()
+    tracer = configure_phoenix_tracing()
     redis = Redis.from_url(redis_url, decode_responses=True)
     try:
         await redis.ping()
@@ -84,7 +93,7 @@ async def main() -> None:
             store = JobStore(redis)
             count = await store.requeue_interrupted()
             logger.info("Worker started; recovered %d interrupted jobs", count)
-            await Worker(store, graph).run_forever()
+            await Worker(store, graph, tracer=tracer).run_forever()
     finally:
         await redis.aclose()
 

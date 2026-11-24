@@ -4,6 +4,10 @@ from typing import Literal, Protocol
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+try:
+    from langchain_ollama import ChatOllama
+except ImportError:  # The cloud-only test environment may not install local model extras.
+    ChatOllama = None
 from pydantic import BaseModel, Field
 from langsmith import traceable
 
@@ -68,6 +72,21 @@ class NvidiaSupervisor(OpenAISupervisor):
             base_url="https://integrate.api.nvidia.com/v1",
             structured_method="function_calling",
         )
+
+
+class OllamaSupervisor(OpenAISupervisor):
+    """Use a local Ollama model while retaining the validated routing contract."""
+
+    def __init__(self, model_name: str = "gemma3:1b", *, base_url: str = "http://localhost:11434") -> None:
+        if ChatOllama is None:
+            raise RuntimeError("Install langchain-ollama before using MODEL_MODE=ollama")
+        model = ChatOllama(model=model_name, base_url=base_url, temperature=0)
+        self.chain = ChatPromptTemplate.from_messages(
+            [
+                ("system", "You supervise two specialists. Choose research for missing or conflicting sources; choose analysis only after citable measurements exist; choose finish only when a source-backed calculation exists. Never invent evidence. A bounded graph guard may override your choice."),
+                ("human", "Question: {query}\nResearch: {reports}\nAnalysis: {analysis}\nContributions: {contributions}\nSupervisor steps: {steps}"),
+            ]
+        ) | model.with_structured_output(RouteDecision, method="json_schema")
 
 
 async def supervisor_node(state: OrchestratorState, router: Router) -> dict:
