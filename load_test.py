@@ -19,7 +19,7 @@ async def run(base_url: str, timeout: float) -> dict:
         "Investigate INC-421 and calculate the p95 latency increase",
         "Investigate INC-999 and calculate the p95 latency increase",
     ]
-    async with httpx.AsyncClient(base_url=base_url, timeout=10) as client:
+    async with httpx.AsyncClient(base_url=base_url, timeout=30) as client:
         async def submit_and_poll(query: str) -> dict:
             start = time.perf_counter()
             response = await client.post("/tasks", json={"query": query})
@@ -27,12 +27,16 @@ async def run(base_url: str, timeout: float) -> dict:
             job_id = response.json()["job_id"]
             deadline = start + timeout
             while time.perf_counter() < deadline:
-                current = await client.get(f"/tasks/{job_id}")
+                try:
+                    current = await client.get(f"/tasks/{job_id}")
+                except httpx.TransportError:
+                    await asyncio.sleep(1)
+                    continue
                 current.raise_for_status()
                 job = current.json()
                 if job["status"] in {"DONE", "FAILED", "WAITING_APPROVAL"}:
                     return {"job_id": job_id, "query": query, "status": job["status"], "answer": job.get("answer"), "seconds": round(time.perf_counter() - start, 3)}
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(1)
             return {"job_id": job_id, "status": "TIMEOUT", "seconds": round(time.perf_counter() - start, 3)}
 
         jobs = await asyncio.gather(*(submit_and_poll(query) for query in queries))

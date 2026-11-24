@@ -1,0 +1,42 @@
+{
+  "timestamp_utc": "2026-11-24T16:14:38.201073+00:00",
+  "jobs": [
+    {
+      "job_id": "80ff87d5-aac9-4667-b7b0-036fde35d1fd",
+      "query": "Investigate INC-104 and calculate the p95 latency increase",
+      "status": "DONE",
+      "answer": "INC-104: p95 latency changed from 240 ms to 360 ms (50.0% increase). Source: data/INC-104.md.",
+      "seconds": 49.481
+    },
+    {
+      "job_id": "3d3b0c97-e033-40f0-854a-cc05133fb4fb",
+      "query": "Investigate INC-207 and calculate the p95 latency increase",
+      "status": "DONE",
+      "answer": "INC-207: p95 latency changed from 180 ms to 198 ms (10.0% increase). Source: data/INC-207.md.",
+      "seconds": 91.319
+    },
+    {
+      "job_id": "9bf203a0-8224-4f70-87fb-34ad7e39ed93",
+      "query": "Investigate INC-315 and calculate the p95 latency increase",
+      "status": "DONE",
+      "answer": "INC-315: p95 latency changed from 220 ms to 410 ms (86.4% increase). Source: data/INC-315.md.",
+      "seconds": 144.365
+    },
+    {
+      "job_id": "ca4b844d-64ab-4614-84e7-817083bd00c0",
+      "query": "Investigate INC-421 and calculate the p95 latency increase",
+      "status": "DONE",
+      "answer": "INC-421: p95 latency changed from 170 ms to 260 ms (52.9% increase). Source: data/INC-421.md.",
+      "seconds": 228.798
+    },
+    {
+      "job_id": "8e6bfa1b-d922-4da6-b9cd-77623d29e9a1",
+      "query": "Investigate INC-999 and calculate the p95 latency increase",
+      "status": "DONE",
+      "answer": "I could not verify a source-backed calculation from the available reports.",
+      "seconds": 180.0
+    }
+  ],
+  "p95_seconds_nearest_rank": 228.798,
+  "note": "Client-observed p95 is not a Phoenix trace metric. Verify all five job IDs in Phoenix before claiming trace evidence."
+}

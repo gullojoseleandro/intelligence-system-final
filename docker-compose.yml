@@ -49,6 +49,7 @@ services:
     image: arizephoenix/phoenix:latest
     environment:
       PHOENIX_WORKING_DIR: /mnt/data
+      PHOENIX_ENABLE_AUTH: "false"
     volumes:
       - phoenix-data:/mnt/data
     ports:

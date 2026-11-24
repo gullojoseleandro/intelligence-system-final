@@ -2,7 +2,7 @@
 
 A local, asynchronous incident-analysis system. FastAPI queues requests in Redis; a LangGraph supervisor delegates research and analysis; research combines SQLite FTS5 exact lookup with persisted Chroma semantic search. The worker uses a local Ollama model, stores checkpoints in Redis, and exports traces to local Arize Phoenix. No paid model API key is required by default.
 
-This is a **local evaluation prototype**, not a public Internet service. The API binds to localhost, but task endpoints lack user authentication. Do not expose them publicly or load sensitive documents.
+This is a **local evaluation prototype**, not a public Internet service. API and Phoenix bind to localhost; task endpoints lack user authentication and Phoenix authentication is disabled for the local demo. Do not expose either service publicly or load sensitive documents.
 
 ## One-command start (Windows)
 
@@ -30,10 +30,12 @@ To run five concurrent API requests, use Python 3.12:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe load_test.py --timeout 300 --output evidence/local-five-run.json
+.\.venv\Scripts\python.exe load_test.py --timeout 1800 --output evidence/local-five-run.json
 ```
 
-The JSON contains job IDs, queries, terminal statuses, answers, and client-observed latencies. A run is valid evidence only if all five jobs reach `DONE`; inspect the corresponding job IDs in Phoenix at `http://127.0.0.1:6006`. Do not treat the old `evidence/offline-load.json` as live-model trace evidence. Traces contain prompts and report excerpts.
+The JSON contains job IDs, queries, terminal statuses, answers, and client-observed latencies. A run is valid evidence only if all five jobs reach `DONE`; inspect the corresponding job IDs in Phoenix at `http://127.0.0.1:6006`. Traces contain prompts and report excerpts.
+
+An observed local Ollama run is recorded in [`evidence/live-five-run.json`](evidence/live-five-run.json): all five jobs reached `DONE`, four answers cited their incident report, and the unknown `INC-999` returned no invented calculation. The client-observed nearest-rank p95 was 228.798 seconds on a CPU-only host. [`evidence/phoenix-five-traces.json`](evidence/phoenix-five-traces.json) records a Phoenix `worker.graph` root span and a `ChatOllama` model span for each of those exact five job IDs, plus token totals. These are observed local measurements, not a latency or cost guarantee.
 
 ## Architecture
 

@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 from langchain_core.runnables import RunnableLambda
 
-from app.supervisor import NvidiaSupervisor, OpenAISupervisor, OllamaSupervisor, RouteDecision
+from app.supervisor import NvidiaSupervisor, OpenAISupervisor, OllamaSupervisor, RouteDecision, supervisor_node
+from app.graph import initial_state
 
 
 class SupervisorProviderTests(unittest.TestCase):
@@ -42,3 +43,16 @@ class SupervisorProviderTests(unittest.TestCase):
             OllamaSupervisor("gemma3:1b", base_url="http://ollama:11434")
         model_class.assert_called_once_with(model="gemma3:1b", base_url="http://ollama:11434", temperature=0)
         model_class.return_value.with_structured_output.assert_called_once_with(RouteDecision, method="json_schema")
+
+
+class SupervisorProgressTests(unittest.IsolatedAsyncioTestCase):
+    async def test_existing_evidence_advances_to_analysis_even_if_router_repeats_research(self) -> None:
+        class RepeatingRouter:
+            async def decide(self, state):
+                return RouteDecision(next_agent="research", reason="retry research")
+
+        state = initial_state("Investigate INC-421")
+        state["reports"] = [{"source_id": "INC-421", "path": "data/INC-421.md", "text": "baseline_p95_ms: 170\ncurrent_p95_ms: 260"}]
+        state["supervisor_steps"] = 1
+        result = await supervisor_node(state, RepeatingRouter())
+        self.assertEqual(result["next_agent"], "analysis")

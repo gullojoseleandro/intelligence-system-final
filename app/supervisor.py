@@ -102,7 +102,8 @@ async def supervisor_node(state: OrchestratorState, router: Router) -> dict:
         reason = decision.reason
         if not state["reports"]:
             route = "research"
-        elif state.get("analysis") is None and route == "finish":
+        elif state.get("analysis") is None:
+            # Repeating retrieval against an unchanged local corpus cannot add evidence.
             route = "analysis"
     return {
         "next_agent": route,

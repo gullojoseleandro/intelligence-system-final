@@ -1,0 +1,47 @@
+{
+  "observed_at_utc": "2026-11-24T16:16:39.993595+00:00",
+  "project": "default",
+  "all_five_traced": true,
+  "runs": [
+    {
+      "job_id": "80ff87d5-aac9-4667-b7b0-036fde35d1fd",
+      "phoenix_trace_id": "9d5a078ce338cd17c5710179ff8466df",
+      "root_span_id": "U3BhbjoxNTA=",
+      "span_count": 39,
+      "model_span_present": true,
+      "token_count_total": 1177
+    },
+    {
+      "job_id": "3d3b0c97-e033-40f0-854a-cc05133fb4fb",
+      "phoenix_trace_id": "b9a1d4a10833008bedf18add0440de75",
+      "root_span_id": "U3BhbjoxODk=",
+      "span_count": 39,
+      "model_span_present": true,
+      "token_count_total": 1154
+    },
+    {
+      "job_id": "9bf203a0-8224-4f70-87fb-34ad7e39ed93",
+      "phoenix_trace_id": "2b1107f8c3c9ccf44a64284365093545",
+      "root_span_id": "U3BhbjoyMjg=",
+      "span_count": 39,
+      "model_span_present": true,
+      "token_count_total": 1197
+    },
+    {
+      "job_id": "ca4b844d-64ab-4614-84e7-817083bd00c0",
+      "phoenix_trace_id": "94d21b2fa3a32d79f86d96e199101b72",
+      "root_span_id": "U3BhbjozMDM=",
+      "span_count": 39,
+      "model_span_present": true,
+      "token_count_total": 1170
+    },
+    {
+      "job_id": "8e6bfa1b-d922-4da6-b9cd-77623d29e9a1",
+      "phoenix_trace_id": "386e75c9c9dce7a2183522f39a79725a",
+      "root_span_id": "U3BhbjoyNjc=",
+      "span_count": 39,
+      "model_span_present": true,
+      "token_count_total": 740
+    }
+  ]
+}

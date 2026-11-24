@@ -36,3 +36,4 @@ class PhoenixTracingTests(unittest.TestCase):
         self.assertIn("127.0.0.1:6006:6006", compose)
         self.assertIn("phoenix-data:", compose)
         self.assertIn("PHOENIX_COLLECTOR_ENDPOINT", compose)
+        self.assertIn('PHOENIX_ENABLE_AUTH: "false"', compose)
