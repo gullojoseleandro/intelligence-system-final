@@ -15,3 +15,13 @@ class ObservabilitySettingsTests(unittest.TestCase):
         with patch.dict(os.environ, {"MODEL_MODE": "offline", "LANGSMITH_TRACING": "true", "LANGSMITH_API_KEY": ""}):
             with self.assertRaisesRegex(ValueError, "LANGSMITH_API_KEY"):
                 load_settings()
+
+    def test_nvidia_mode_requires_its_own_key(self) -> None:
+        with patch.dict(os.environ, {"MODEL_MODE": "nvidia", "NVIDIA_API_KEY": "", "LANGSMITH_TRACING": "false"}):
+            with self.assertRaisesRegex(ValueError, "NVIDIA_API_KEY"):
+                load_settings()
+
+    def test_nvidia_mode_accepts_a_configured_key(self) -> None:
+        with patch.dict(os.environ, {"MODEL_MODE": "nvidia", "NVIDIA_API_KEY": "nvapi-test", "LANGSMITH_TRACING": "false"}):
+            mode, _ = load_settings()
+        self.assertEqual(mode, "nvidia")

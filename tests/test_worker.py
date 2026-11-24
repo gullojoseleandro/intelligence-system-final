@@ -1,10 +1,11 @@
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 import fakeredis.aioredis
 
 from app.jobs import JobStore
-from app.worker import Worker
+from app.worker import Worker, create_router
 
 
 class FakeGraph:
@@ -61,3 +62,13 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
         await Worker(self.store, graph).process_once(timeout=1)
         self.assertIsNone(graph.inputs[0])
         self.assertEqual((await self.store.get(job_id))["status"], "DONE")
+
+
+class WorkerProviderTests(unittest.TestCase):
+    def test_nvidia_mode_selects_nvidia_supervisor(self) -> None:
+        with patch("app.worker.NvidiaSupervisor") as supervisor:
+            self.assertIs(create_router("nvidia"), supervisor.return_value)
+        supervisor.assert_called_once_with("meta/llama-3.1-8b-instruct")
+
+    def test_existing_offline_mode_stays_offline(self) -> None:
+        self.assertEqual(type(create_router("offline")).__name__, "OfflineDemoRouter")

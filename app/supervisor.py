@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Literal, Protocol
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -22,14 +23,27 @@ class Router(Protocol):
 
 
 class OpenAISupervisor:
-    def __init__(self, model_name: str = "gpt-4o-mini") -> None:
-        model = ChatOpenAI(model=model_name, temperature=0)
+    def __init__(
+        self,
+        model_name: str = "gpt-4o-mini",
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        structured_method: str | None = None,
+    ) -> None:
+        model_options = {"model": model_name, "temperature": 0}
+        if api_key is not None:
+            model_options["api_key"] = api_key
+        if base_url is not None:
+            model_options["base_url"] = base_url
+        model = ChatOpenAI(**model_options)
+        structured_options = {"method": structured_method} if structured_method else {}
         self.chain = ChatPromptTemplate.from_messages(
             [
                 ("system", "You supervise two specialists. Choose research for missing or conflicting sources; choose analysis only after citable measurements exist; choose finish only when a source-backed calculation exists. Never invent evidence. A bounded graph guard may override your choice."),
                 ("human", "Question: {query}\nResearch: {reports}\nAnalysis: {analysis}\nContributions: {contributions}\nSupervisor steps: {steps}"),
             ]
-        ) | model.with_structured_output(RouteDecision)
+        ) | model.with_structured_output(RouteDecision, **structured_options)
 
     @traceable(name="supervisor_decision")
     async def decide(self, state: OrchestratorState) -> RouteDecision:
@@ -41,6 +55,18 @@ class OpenAISupervisor:
                 "contributions": json.dumps(state["contributions"][-4:]),
                 "steps": state["supervisor_steps"],
             }
+        )
+
+
+class NvidiaSupervisor(OpenAISupervisor):
+    """Route decisions through NVIDIA's hosted OpenAI-compatible NIM endpoint."""
+
+    def __init__(self, model_name: str = "meta/llama-3.1-8b-instruct") -> None:
+        super().__init__(
+            model_name,
+            api_key=os.environ["NVIDIA_API_KEY"],
+            base_url="https://integrate.api.nvidia.com/v1",
+            structured_method="function_calling",
         )
 
 

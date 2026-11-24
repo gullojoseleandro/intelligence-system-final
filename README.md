@@ -13,6 +13,18 @@ Redis 8 provides the RedisJSON and RediSearch capabilities required by `AsyncRed
 
 If Docker's default address pools are exhausted on your machine, use a local untracked `docker-compose.override.yml` with a free subnet; do not remove unrelated Docker networks to make space.
 
+### Use an NVIDIA-hosted model
+
+NVIDIA Developer Program members can use hosted NIM endpoints for **prototyping**, subject to NVIDIA's access and rate limits; this is not an unlimited production tier. Obtain a developer API key from the [NVIDIA API Catalog](https://docs.api.nvidia.com/nim/docs/api-quickstart), then set these values in the ignored `.env`:
+
+```env
+MODEL_MODE=nvidia
+NVIDIA_API_KEY=<your NVIDIA developer key>
+NVIDIA_MODEL_NAME=meta/llama-3.1-8b-instruct
+```
+
+Run `docker compose up -d --build` to recreate the worker with the new configuration. This mode uses NVIDIA's [OpenAI-compatible chat endpoint](https://docs.api.nvidia.com/nim/reference/meta-llama-3_1-8b-infer) through the existing async LangChain client, with function calling for the supervisor's validated route decision. `MODEL_MODE=openai` and `MODEL_MODE=offline` remain available. Never reuse an OpenAI key as `NVIDIA_API_KEY`; do not commit `.env`.
+
 ## Use the API
 
 Submit a normal request (PowerShell):
@@ -34,7 +46,7 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8000/tasks/$($task.job_id)
 
 ## Observability and five-request evidence
 
-To record **real** model traces and automatically calculated token cost, set your own `OPENAI_API_KEY`, `LANGSMITH_API_KEY`, `MODEL_MODE=openai`, and `LANGSMITH_TRACING=true` in the ignored `.env`, then restart the API and worker with `docker compose up -d --build`. The worker runs the LangGraph nodes and the `ChatOpenAI` supervisor under LangSmith tracing; `app/supervisor.py` also explicitly instruments the decision call. Queries and retrieved source text are sent to LangSmith in this mode, so use only non-sensitive sample data. [LangSmith documents automatic cost tracking for LangChain LLM calls](https://docs.langchain.com/langsmith/cost-tracking).
+To record **real** model traces, use `MODEL_MODE=nvidia` with `NVIDIA_API_KEY` (or `MODEL_MODE=openai` with `OPENAI_API_KEY`), set `LANGSMITH_API_KEY` and `LANGSMITH_TRACING=true` in the ignored `.env`, then restart the API and worker with `docker compose up -d --build`. The worker runs the LangGraph nodes and the live supervisor under LangSmith tracing; `app/supervisor.py` also explicitly instruments the decision call. Queries and retrieved source text are sent to LangSmith in this mode, so use only non-sensitive sample data. [LangSmith documents automatic token-based cost tracking](https://docs.langchain.com/langsmith/cost-tracking). For a NVIDIA model not already in LangSmith's pricing table, configure a [custom model price entry](https://docs.langchain.com/langsmith/cost-tracking) matching the traced model **before** the test run; use the actual price for your account (zero only when your NVIDIA usage is genuinely free). LangSmith does not backfill pricing changes into earlier traces. Do not label a free NVIDIA call as paid OpenAI usage or invent a nonzero charge.
 
 With the stack running, create a Python 3.12 environment, install `requirements-dev.txt`, and run:
 

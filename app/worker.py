@@ -11,10 +11,18 @@ from app.demo import OfflineDemoRouter
 from app.graph import build_graph, initial_state
 from app.jobs import JobStore
 from app.observability import load_settings
-from app.supervisor import OpenAISupervisor
+from app.supervisor import NvidiaSupervisor, OpenAISupervisor, Router
 
 
 logger = logging.getLogger(__name__)
+
+
+def create_router(mode: str) -> Router:
+    if mode == "offline":
+        return OfflineDemoRouter()
+    if mode == "nvidia":
+        return NvidiaSupervisor(os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct"))
+    return OpenAISupervisor(os.getenv("MODEL_NAME", "gpt-4o-mini"))
 
 
 class Worker:
@@ -71,7 +79,7 @@ async def main() -> None:
     try:
         await redis.ping()
         async with AsyncRedisSaver.from_conn_string(redis_url) as saver:
-            router = OfflineDemoRouter() if mode == "offline" else OpenAISupervisor(os.getenv("MODEL_NAME", "gpt-4o-mini"))
+            router = create_router(mode)
             graph = build_graph(router, saver)
             store = JobStore(redis)
             count = await store.requeue_interrupted()
